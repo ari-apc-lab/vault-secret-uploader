@@ -51,8 +51,13 @@ def upload_hpc_secret():
 
     auth_header = {"x-vault-token": vault_admin_token}
     json_policy = {
-        "policy": "path \"hpc/" + username + "/*\"\n{\n"
+        "policy": "path \"hpc/" + username + "/*\"\n"
+                  "{\n"
                   "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\"]\n"
+                  "}\n"
+                  "path \"hpc/*\"\n"
+                  "{\n"
+                  "  capabilities = [\"list\"]\n"
                   "}"
     }
 
