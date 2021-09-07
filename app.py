@@ -1,7 +1,7 @@
 from base64 import b64encode
 from os import getenv
 from flask import Flask, request
-from requests import post, Session, adapters
+from requests import post, Session, adapters, get, delete
 import json
 
 app = Flask(__name__)
@@ -104,6 +104,64 @@ def upload_hpc_secret():
     return "Secret uploaded correctly\n", 200
 
 
+@app.route('/hpc/<hpc_name>', methods=['GET'])
+def get_hpc_secret(hpc_name):
+    try:
+        jwt = _get_token(request)
+        user_info = _token_info(jwt)
+    except Exception as e:
+        return str(e), 500
+    if not user_info:
+        return "Unauthorized access\n", 401
+
+    username = user_info["preferred_username"]
+
+    vault_user_token = _get_vault_token(jwt, username)
+
+    if vault_user_token == "":
+        return ("Could not login to vault\n", 500)
+
+    secret_endpoint = "http://" + vault_endpoint + "/v1/hpc/" + username + "/" + hpc_name
+    auth_header = {"x-vault-token": vault_user_token}
+
+    vault_secret_response = get(secret_endpoint, headers=auth_header)
+    if not vault_secret_response.ok:
+        return ("There was a problem getting the secret from vault:\n" + str(vault_secret_response.content) + "\n",
+                vault_secret_response.status_code)
+
+    json_data = vault_secret_response.json()["data"]
+
+    return json_data, 200
+
+
+@app.route('/hpc/<hpc_name>', methods=['DELETE'])
+def delete_hpc_secret(hpc_name):
+    try:
+        jwt = _get_token(request)
+        user_info = _token_info(jwt)
+    except Exception as e:
+        return str(e), 500
+    if not user_info:
+        return "Unauthorized access\n", 401
+
+    username = user_info["preferred_username"]
+
+    vault_user_token = _get_vault_token(jwt, username)
+
+    if vault_user_token == "":
+        return ("Could not login to vault\n", 500)
+
+    secret_endpoint = "http://" + vault_endpoint + "/v1/hpc/" + username + "/" + hpc_name
+    auth_header = {"x-vault-token": vault_user_token}
+
+    vault_secret_response = delete(secret_endpoint, headers=auth_header)
+    if not vault_secret_response.ok:
+        return ("There was a problem deleting the secret from vault:\n" + str(vault_secret_response.content) + "\n",
+                vault_secret_response.status_code)
+
+    return "Secret deleted successfully", 200
+
+
 def _token_info(access_token) -> dict:
 
     req = {'token': access_token}
@@ -116,7 +174,7 @@ def _token_info(access_token) -> dict:
     headers['Authorization'] = 'Basic {0}'.format(b64encode(basic_auth_bytes).decode('utf-8'))
 
     token_response = post(oidc_introspection_endpoint, data=req, headers=headers)
-    if token_response.status_code != 200:
+    if not token_response.ok:
         raise Exception("There was a problem trying to authenticate with keycloak:\n"
                         " HTTP code: " + str(token_response.status_code) + "\n"
                         " Content:" + str(token_response.content) + "\n")
@@ -133,3 +191,18 @@ def _get_token(r):
     if auth_header[0] == "Bearer":
         return auth_header[1]
     return ""
+
+
+def _get_vault_token(jwt, username):
+    url = "http://" + vault_endpoint + "/v1/auth/jwt/login"
+    payload = {
+        "jwt": jwt,
+        "role": username
+    }
+    response = post(url, json=payload)
+    if response.ok:
+        json = response.json()
+        user_token = json["auth"]["client_token"]
+        return user_token
+    else:
+        return ""
