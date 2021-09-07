@@ -2,6 +2,7 @@ from base64 import b64encode
 from os import getenv
 from flask import Flask, request
 from requests import post, Session, adapters, get, delete
+from requests import request as req_request
 import json
 
 app = Flask(__name__)
@@ -102,6 +103,36 @@ def upload_hpc_secret():
                 secret_response.status_code)
 
     return "Secret uploaded correctly\n", 200
+
+
+@app.route('/hpc', methods=['GET'])
+def list_hpc_secrets():
+    try:
+        jwt = _get_token(request)
+        user_info = _token_info(jwt)
+    except Exception as e:
+        return str(e), 500
+    if not user_info:
+        return "Unauthorized access\n", 401
+
+    username = user_info["preferred_username"]
+
+    vault_user_token = _get_vault_token(jwt, username)
+
+    if vault_user_token == "":
+        return ("Could not login to vault\n", 500)
+
+    secret_endpoint = "http://" + vault_endpoint + "/v1/hpc/" + username
+    auth_header = {"x-vault-token": vault_user_token}
+
+    vault_secret_response = req_request('LIST', secret_endpoint, headers=auth_header)
+    if not vault_secret_response.ok:
+        return ("There was a problem listing the secrets from vault:\n" + str(vault_secret_response.content) + "\n",
+                vault_secret_response.status_code)
+
+    list_secrets = vault_secret_response.json()["data"]["keys"]
+
+    return list_secrets, 200
 
 
 @app.route('/hpc/<hpc_name>', methods=['GET'])
