@@ -73,12 +73,12 @@ def upload_hpc_secret():
         }
     }
 
-    json_secret = {"user": ssh_user}
+    json_secret = {"ssh_user": ssh_user, "hpc": hpc_name}
 
     if ssh_pw:
-        json_secret["password"] = ssh_pw
+        json_secret["ssh_password"] = ssh_pw
     else:
-        json_secret["private_key"] = ssh_pkey
+        json_secret["ssh_pkey"] = ssh_pkey
 
     policy_endpoint = "http://" + vault_endpoint + "/v1/sys/policy/hpc-" + username
     role_endpoint = "http://" + vault_endpoint + "/v1/auth/jwt/role/" + username
@@ -130,7 +130,7 @@ def list_hpc_secrets():
         return ("There was a problem listing the secrets from vault:\n" + str(vault_secret_response.content) + "\n",
                 vault_secret_response.status_code)
 
-    list_secrets = vault_secret_response.json()["data"]["keys"]
+    list_secrets = {"list": vault_secret_response.json()["data"]["keys"]}
 
     return list_secrets, 200
 
