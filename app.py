@@ -22,8 +22,8 @@ for protocol in ['http:', 'https:']:
     session.mount(protocol, adapter)
 
 
-@app.route('/hpc', methods=['POST'])
-def upload_hpc_secret():
+@app.route('/ssh', methods=['POST'])
+def upload_ssh_secret():
     try:
         user_info = _token_info(_get_token(request))
     except Exception as e:
@@ -34,10 +34,10 @@ def upload_hpc_secret():
     username = user_info["preferred_username"]
     json_data = request.json
 
-    if "hpc" in json_data:
-        hpc_name = json_data["hpc"]
+    if "ssh_host" in json_data:
+        ssh_host = json_data["ssh_host"]
     else:
-        return "Request must include HPC name (\"hpc\")\n", 403
+        return "Request must include SSH host (\"ssh_host\")\n", 403
 
     if "ssh_user" in json_data:
         ssh_user = json_data["ssh_user"]
@@ -52,18 +52,14 @@ def upload_hpc_secret():
 
     auth_header = {"x-vault-token": vault_admin_token}
     json_policy = {
-        "policy": "path \"hpc/" + username + "/*\"\n"
+        "policy": "path \"ssh/" + username + "/*\"\n"
                   "{\n"
                   "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\"]\n"
                   "}\n"
-                  "path \"hpc/*\"\n"
-                  "{\n"
-                  "  capabilities = [\"list\"]\n"
-                  "}"
     }
 
     json_role = {
-        "policies": ["hpc-" + username],
+        "policies": ["ssh-" + username],
         "role_type": "jwt",
         "bound_audiences": "account",
         "user_claim": "email",
@@ -73,16 +69,16 @@ def upload_hpc_secret():
         }
     }
 
-    json_secret = {"ssh_user": ssh_user, "hpc": hpc_name}
+    json_secret = {"ssh_user": ssh_user, "ssh_host": ssh_host}
 
     if ssh_pw:
         json_secret["ssh_password"] = ssh_pw
     else:
         json_secret["ssh_pkey"] = ssh_pkey
 
-    policy_endpoint = "http://" + vault_endpoint + "/v1/sys/policy/hpc-" + username
+    policy_endpoint = "http://" + vault_endpoint + "/v1/sys/policy/ssh-" + username
     role_endpoint = "http://" + vault_endpoint + "/v1/auth/jwt/role/" + username
-    secret_endpoint = "http://" + vault_endpoint + "/v1/hpc/" + username + "/" + hpc_name
+    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/" + username + "/" + ssh_host
 
     policy_response = post(policy_endpoint, data=json.dumps(json_policy), headers=auth_header)
 
@@ -105,8 +101,8 @@ def upload_hpc_secret():
     return "Secret uploaded correctly\n", 200
 
 
-@app.route('/hpc', methods=['GET'])
-def list_hpc_secrets():
+@app.route('/ssh', methods=['GET'])
+def list_ssh_secrets():
     try:
         jwt = _get_token(request)
         user_info = _token_info(jwt)
@@ -122,7 +118,7 @@ def list_hpc_secrets():
     if vault_user_token == "":
         return ("Could not login to vault\n", 500)
 
-    secret_endpoint = "http://" + vault_endpoint + "/v1/hpc/" + username
+    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/" + username
     auth_header = {"x-vault-token": vault_user_token}
 
     vault_secret_response = req_request('LIST', secret_endpoint, headers=auth_header)
@@ -135,8 +131,8 @@ def list_hpc_secrets():
     return list_secrets, 200
 
 
-@app.route('/hpc/<hpc_name>', methods=['GET'])
-def get_hpc_secret(hpc_name):
+@app.route('/ssh/<ssh_host>', methods=['GET'])
+def get_ssh_secret(ssh_host):
     try:
         jwt = _get_token(request)
         user_info = _token_info(jwt)
@@ -152,7 +148,7 @@ def get_hpc_secret(hpc_name):
     if vault_user_token == "":
         return ("Could not login to vault\n", 500)
 
-    secret_endpoint = "http://" + vault_endpoint + "/v1/hpc/" + username + "/" + hpc_name
+    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/" + username + "/" + ssh_host
     auth_header = {"x-vault-token": vault_user_token}
 
     vault_secret_response = get(secret_endpoint, headers=auth_header)
@@ -165,8 +161,8 @@ def get_hpc_secret(hpc_name):
     return json_data, 200
 
 
-@app.route('/hpc/<hpc_name>', methods=['DELETE'])
-def delete_hpc_secret(hpc_name):
+@app.route('/ssh/<ssh_host>', methods=['DELETE'])
+def delete_ssh_secret(ssh_host):
     try:
         jwt = _get_token(request)
         user_info = _token_info(jwt)
@@ -182,7 +178,7 @@ def delete_hpc_secret(hpc_name):
     if vault_user_token == "":
         return ("Could not login to vault\n", 500)
 
-    secret_endpoint = "http://" + vault_endpoint + "/v1/hpc/" + username + "/" + hpc_name
+    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/" + username + "/" + ssh_host
     auth_header = {"x-vault-token": vault_user_token}
 
     vault_secret_response = delete(secret_endpoint, headers=auth_header)
