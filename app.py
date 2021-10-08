@@ -24,16 +24,8 @@ for protocol in ['http:', 'https:']:
 
 @app.route('/ssh', methods=['POST'])
 def upload_ssh_secret():
-    try:
-        user_info = _token_info(_get_token(request))
-    except Exception as e:
-        return str(e), 500
-    if not user_info:
-        return "Unauthorized access\n", 401
 
-    username = user_info["preferred_username"]
     json_data = request.json
-
     if "ssh_host" in json_data:
         ssh_host = json_data["ssh_host"]
     else:
@@ -50,25 +42,6 @@ def upload_ssh_secret():
     if not ssh_pw and not ssh_pkey:
         return "Request must include either SSH password (\"ssh_pw\") or SSH private key (\"ssh_pkey\")\n", 403
 
-    auth_header = {"x-vault-token": vault_admin_token}
-    json_policy = {
-        "policy": "path \"ssh/" + username + "/*\"\n"
-                  "{\n"
-                  "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\"]\n"
-                  "}\n"
-    }
-
-    json_role = {
-        "policies": ["ssh-" + username],
-        "role_type": "jwt",
-        "bound_audiences": "account",
-        "user_claim": "email",
-        "groups_claim": "",
-        "bound_claims": {
-            "preferred_username": username
-        }
-    }
-
     json_secret = {"ssh_user": ssh_user, "ssh_host": ssh_host}
 
     if ssh_pw:
@@ -76,29 +49,24 @@ def upload_ssh_secret():
     else:
         json_secret["ssh_pkey"] = ssh_pkey
 
-    policy_endpoint = "http://" + vault_endpoint + "/v1/sys/policy/ssh-" + username
-    role_endpoint = "http://" + vault_endpoint + "/v1/auth/jwt/role/" + username
-    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/" + username + "/" + ssh_host
+    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/{0}/" + ssh_host
 
-    policy_response = post(policy_endpoint, data=json.dumps(json_policy), headers=auth_header)
+    return _upload_secret(request, secret_endpoint, json_secret, "ssh")
 
-    if not policy_response.ok:
-        return ("There was a problem creating the policy:\n" + str(policy_response.content) + "\n",
-                policy_response.status_code)
 
-    role_response = post(role_endpoint, data=json.dumps(json_role), headers=auth_header)
+@app.route('/keycloak', methods=['POST'])
+def upload_keycloak_secret():
 
-    if not role_response.ok:
-        return ("There was a problem binding the keycloak user to the policy:\n" + str(role_response.content) + "\n",
-                role_response.status_code)
+    json_data = request.json
+    if "password" in json_data:
+        password = json_data["password"]
+    else:
+        return "Request must include keycloak password (\"password\")\n", 403
 
-    secret_response = post(secret_endpoint, data=json.dumps(json_secret), headers=auth_header)
+    json_secret = {"password": password}
+    secret_endpoint = "http://" + vault_endpoint + "/v1/keycloak/{0}"
 
-    if not secret_response.ok:
-        return ("There was a problem creating the secret:\n" + str(secret_response.content) + "\n",
-                secret_response.status_code)
-
-    return "Secret uploaded correctly\n", 200
+    return _upload_secret(request, secret_endpoint, json_secret, "keycloak")
 
 
 @app.route('/ssh', methods=['GET'])
@@ -133,6 +101,82 @@ def list_ssh_secrets():
 
 @app.route('/ssh/<ssh_host>', methods=['GET'])
 def get_ssh_secret(ssh_host):
+    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/{0}/" + ssh_host
+    return _get_secret(request, secret_endpoint)
+
+
+@app.route('/keycloak', methods=['GET'])
+def get_keycloak_secret():
+    secret_endpoint = "http://" + vault_endpoint + "/v1/keycloak/{0}"
+    return _get_secret(request, secret_endpoint)
+
+
+@app.route('/ssh/<ssh_host>', methods=['DELETE'])
+def delete_ssh_secret(ssh_host):
+    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/{0}/" + ssh_host
+    return _delete_secret(request, secret_endpoint)
+
+
+@app.route('/keycloak', methods=['DELETE'])
+def delete_keycloak_secret():
+    secret_endpoint = "http://" + vault_endpoint + "/v1/keycloak/{0}"
+    return _delete_secret(request, secret_endpoint)
+
+
+def _upload_secret(request, endpoint, json_secret, type):
+    try:
+        user_info = _token_info(_get_token(request))
+    except Exception as e:
+        return str(e), 500
+    if not user_info:
+        return "Unauthorized access\n", 401
+
+    username = user_info["preferred_username"]
+    auth_header = {"x-vault-token": vault_admin_token}
+    json_policy = {
+        "policy": "path \"/" + type + "/" + username + "\"\n"
+                  "{\n"
+                  "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\"]\n"
+                  "}\n"
+    }
+
+    json_role = {
+        "policies": [type + "-" + username],
+        "role_type": "jwt",
+        "bound_audiences": "account",
+        "user_claim": "email",
+        "groups_claim": "",
+        "bound_claims": {
+            "preferred_username": username
+        }
+    }
+
+    policy_endpoint = "http://" + vault_endpoint + "/v1/sys/policy/ssh-" + username
+    role_endpoint = "http://" + vault_endpoint + "/v1/auth/jwt/role/" + username
+    secret_endpoint = endpoint.format(username)
+
+    policy_response = post(policy_endpoint, data=json.dumps(json_policy), headers=auth_header)
+
+    if not policy_response.ok:
+        return ("There was a problem creating the policy:\n" + str(policy_response.content) + "\n",
+                policy_response.status_code)
+
+    role_response = post(role_endpoint, data=json.dumps(json_role), headers=auth_header)
+
+    if not role_response.ok:
+        return ("There was a problem binding the keycloak user to the policy:\n" + str(role_response.content) + "\n",
+                role_response.status_code)
+
+    secret_response = post(secret_endpoint, data=json.dumps(json_secret), headers=auth_header)
+
+    if not secret_response.ok:
+        return ("There was a problem creating the secret:\n" + str(secret_response.content) + "\n",
+                secret_response.status_code)
+
+    return "Secret uploaded correctly\n", 200
+
+
+def _get_secret(request, endpoint):
     try:
         jwt = _get_token(request)
         user_info = _token_info(jwt)
@@ -148,7 +192,7 @@ def get_ssh_secret(ssh_host):
     if vault_user_token == "":
         return ("Could not login to vault\n", 500)
 
-    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/" + username + "/" + ssh_host
+    secret_endpoint = endpoint.format(username)
     auth_header = {"x-vault-token": vault_user_token}
 
     vault_secret_response = get(secret_endpoint, headers=auth_header)
@@ -161,8 +205,8 @@ def get_ssh_secret(ssh_host):
     return json_data, 200
 
 
-@app.route('/ssh/<ssh_host>', methods=['DELETE'])
-def delete_ssh_secret(ssh_host):
+def _delete_secret(request, endpoint):
+
     try:
         jwt = _get_token(request)
         user_info = _token_info(jwt)
@@ -178,7 +222,7 @@ def delete_ssh_secret(ssh_host):
     if vault_user_token == "":
         return ("Could not login to vault\n", 500)
 
-    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/" + username + "/" + ssh_host
+    secret_endpoint = endpoint.format(username)
     auth_header = {"x-vault-token": vault_user_token}
 
     vault_secret_response = delete(secret_endpoint, headers=auth_header)
