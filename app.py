@@ -123,7 +123,7 @@ def delete_keycloak_secret():
     return _delete_secret(request, secret_endpoint)
 
 
-def _upload_secret(request, endpoint, json_secret, type):
+def _upload_secret(request, endpoint, json_secret, secret_type):
     try:
         user_info = _token_info(_get_token(request))
     except Exception as e:
@@ -134,14 +134,27 @@ def _upload_secret(request, endpoint, json_secret, type):
     username = user_info["preferred_username"]
     auth_header = {"x-vault-token": vault_admin_token}
     json_policy = {
-        "policy": "path \"/" + type + "/" + username + "\"\n"
+        "policy": "path \"/" + secret_type + "/" + username + "/*\"\n"
+                  "{\n"
+                  "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\"]\n"
+                  "}\n"
+                  "path \"/" + secret_type + "/" + username + "\"\n"
                   "{\n"
                   "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\"]\n"
                   "}\n"
     }
 
+    role_endpoint = "http://" + vault_endpoint + "/v1/auth/jwt/role/" + username
+
+    role_policies = _get_role_policies(role_endpoint)
+    
+    if isinstance(role_policies, list):
+        role_policies.append(secret_type + "-" + username)
+    else:
+        return ("There was a problem retrieving roles for the user")
+
     json_role = {
-        "policies": [type + "-" + username],
+        "policies": role_policies,
         "role_type": "jwt",
         "bound_audiences": "account",
         "user_claim": "email",
@@ -151,8 +164,8 @@ def _upload_secret(request, endpoint, json_secret, type):
         }
     }
 
-    policy_endpoint = "http://" + vault_endpoint + "/v1/sys/policy/ssh-" + username
-    role_endpoint = "http://" + vault_endpoint + "/v1/auth/jwt/role/" + username
+    policy_endpoint = "http://" + vault_endpoint + "/v1/sys/policy/" + secret_type + "-" + username
+
     secret_endpoint = endpoint.format(username)
 
     policy_response = post(policy_endpoint, data=json.dumps(json_policy), headers=auth_header)
@@ -174,6 +187,21 @@ def _upload_secret(request, endpoint, json_secret, type):
                 secret_response.status_code)
 
     return "Secret uploaded correctly\n", 200
+
+
+def _get_role_policies(endpoint):
+    auth_header = {"x-vault-token": vault_admin_token}
+    vault_response = get(endpoint, headers=auth_header)
+    if vault_response.status_code == 404:
+        return []
+    elif vault_response.ok:
+        response_json = vault_response.json()
+        if "policies" in response_json["data"]:
+            return response_json["data"]["policies"]
+        else:
+            return []
+    else:
+        return None
 
 
 def _get_secret(request, endpoint):
