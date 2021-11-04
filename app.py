@@ -46,7 +46,7 @@ def upload_ssh_secret():
 
     if ssh_pw:
         json_secret["ssh_password"] = ssh_pw
-    else:
+    if ssh_pkey:
         json_secret["ssh_pkey"] = ssh_pkey
 
     secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/{0}/" + ssh_host
