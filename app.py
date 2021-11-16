@@ -84,7 +84,7 @@ def list_ssh_secrets():
     vault_user_token = _get_vault_token(jwt, username)
 
     if vault_user_token == "":
-        return ("Could not login to vault\n", 500)
+        return ({}, 200)
 
     secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/" + username
     auth_header = {"x-vault-token": vault_user_token}
@@ -218,7 +218,7 @@ def _get_secret(request, endpoint):
     vault_user_token = _get_vault_token(jwt, username)
 
     if vault_user_token == "":
-        return ("Could not login to vault\n", 500)
+        return ({}, 200)
 
     secret_endpoint = endpoint.format(username)
     auth_header = {"x-vault-token": vault_user_token}
@@ -248,7 +248,7 @@ def _delete_secret(request, endpoint):
     vault_user_token = _get_vault_token(jwt, username)
 
     if vault_user_token == "":
-        return ("Could not login to vault\n", 500)
+        return ("No secrets found for the user", 404)
 
     secret_endpoint = endpoint.format(username)
     auth_header = {"x-vault-token": vault_user_token}
