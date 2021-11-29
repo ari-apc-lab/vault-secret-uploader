@@ -277,8 +277,7 @@ def _token_info(access_token) -> dict:
         raise Exception("There was a problem trying to authenticate with keycloak:\n"
                         " HTTP code: " + str(token_response.status_code) + "\n"
                         " Content:" + str(token_response.content) + "\n")
-    if not token_response.ok:
-        return {}
+
     json = token_response.json()
     if "active" in json and json["active"] is False:
         return {}
