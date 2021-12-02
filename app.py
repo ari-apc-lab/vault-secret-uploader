@@ -4,6 +4,7 @@ from flask import Flask, request
 from requests import post, Session, adapters, get, delete
 from requests import request as req_request
 import json
+import re
 
 app = Flask(__name__)
 dashboard_urls = {}
@@ -30,6 +31,9 @@ def upload_ssh_secret():
         ssh_host = json_data["ssh_host"]
     else:
         return "Request must include SSH host (\"ssh_host\")\n", 403
+
+    if not _validate_host(ssh_host):
+        return "Not a valid host", 403
 
     if "ssh_user" in json_data:
         ssh_user = json_data["ssh_user"]
@@ -113,6 +117,8 @@ def get_keycloak_secret():
 
 @app.route('/ssh/<ssh_host>', methods=['DELETE'])
 def delete_ssh_secret(ssh_host):
+    if not _validate_host(ssh_host):
+        return "Not a valid host", 403
     secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/{0}/" + ssh_host
     return _delete_secret(request, secret_endpoint)
 
@@ -304,3 +310,8 @@ def _get_vault_token(jwt, username):
         return user_token
     else:
         return ""
+
+
+def _validate_host(host):
+    pattern = re.compile("^([a-z0-9A-Z_]+\.)*[a-zA-Z0-9_]+$")
+    return pattern.match(host)
