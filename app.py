@@ -23,6 +23,25 @@ for protocol in ['http:', 'https:']:
     session.mount(protocol, adapter)
 
 
+@app.route('/croupier', methods=['POST'])
+def upload_croupier_secret():
+
+    json_data = request.json
+    if "ssh_host" in json_data:
+        host = json_data["host"]
+    else:
+        return "Request must include host or service (\"host\")\n", 403
+
+    if not _validate_host(host):
+        return "Not a valid host", 403
+
+    json_secret = json_data
+
+    secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}/" + host
+
+    return _upload_secret(request, secret_endpoint, json_secret, "ssh")
+
+
 @app.route('/ssh', methods=['POST'])
 def upload_ssh_secret():
 
