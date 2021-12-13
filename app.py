@@ -27,7 +27,7 @@ for protocol in ['http:', 'https:']:
 def upload_croupier_secret():
 
     json_data = request.json
-    if "ssh_host" in json_data:
+    if "host" in json_data:
         host = json_data["host"]
     else:
         return "Request must include host or service (\"host\")\n", 403
