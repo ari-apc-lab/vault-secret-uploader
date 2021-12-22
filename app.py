@@ -39,7 +39,7 @@ def upload_croupier_secret():
 
     secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}/" + host
 
-    return _upload_secret(request, secret_endpoint, json_secret, "ssh")
+    return _upload_secret(request, secret_endpoint, json_secret, "croupier")
 
 
 @app.route('/ssh', methods=['POST'])
@@ -332,5 +332,5 @@ def _get_vault_token(jwt, username):
 
 
 def _validate_host(host):
-    pattern = re.compile("^([a-z0-9A-Z_]+\.)*[a-zA-Z0-9_]+$")
+    pattern = re.compile("^([a-z0-9A-Z_-]+\.)*[a-zA-Z0-9_]+$")
     return pattern.match(host)
