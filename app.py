@@ -32,7 +32,8 @@ def upload_croupier_secret():
     else:
         return "Request must include host or service (\"host\")\n", 403
 
-    if not _validate_host(host):
+    host = _validate_host(host) 
+    if not host:
         return "Not a valid host", 403
 
     json_secret = json_data
@@ -51,7 +52,8 @@ def upload_ssh_secret():
     else:
         return "Request must include SSH host (\"ssh_host\")\n", 403
 
-    if not _validate_host(ssh_host):
+    ssh_host = _validate_host(ssh_host)
+    if not ssh_host:
         return "Not a valid host", 403
 
     if "ssh_user" in json_data:
@@ -136,7 +138,8 @@ def get_keycloak_secret():
 
 @app.route('/ssh/<ssh_host>', methods=['DELETE'])
 def delete_ssh_secret(ssh_host):
-    if not _validate_host(ssh_host):
+    ssh_host = _validate_host(ssh_host)
+    if not ssh_host:
         return "Not a valid host", 403
     secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/{0}/" + ssh_host
     return _delete_secret(request, secret_endpoint)
@@ -333,5 +336,8 @@ def _get_vault_token(jwt, username):
 
 def _validate_host(host):
     pattern = re.compile("^(http://|https://)?([a-z0-9A-Z_-]+[/:.])*[a-zA-Z0-9_]+/?$")
-    return pattern.match(host)
+    if pattern.match(host):
+        return host.replace('/','').replace(':','')
+    else:
+        return None
     
