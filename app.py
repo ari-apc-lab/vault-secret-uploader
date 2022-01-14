@@ -332,5 +332,5 @@ def _get_vault_token(jwt, username):
 
 
 def _validate_host(host):
-    pattern = re.compile("^([a-z0-9A-Z_-]+\.)*[a-zA-Z0-9_]+$")
+    pattern = re.compile("^([a-z0-9A-Z_-]+\:.)*[a-zA-Z0-9_]+$")
     return pattern.match(host)
