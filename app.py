@@ -136,6 +136,12 @@ def get_keycloak_secret():
     return _get_secret(request, secret_endpoint)
 
 
+@app.route('/croupier', methods=['GET'])
+def get_keycloak_secret():
+    secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}"
+    return _get_secret(request, secret_endpoint)
+
+
 @app.route('/ssh/<ssh_host>', methods=['DELETE'])
 def delete_ssh_secret(ssh_host):
     ssh_host = _validate_host(ssh_host)
@@ -149,6 +155,12 @@ def delete_ssh_secret(ssh_host):
 def delete_keycloak_secret():
     secret_endpoint = "http://" + vault_endpoint + "/v1/keycloak/{0}"
     return _delete_secret(request, secret_endpoint)
+
+
+@app.route('/croupier', methods=['DELETE'])
+def delete_keycloak_secret():
+    secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}"
+    return _delete_secret(request, secret_endpoint) 
 
 
 def _upload_secret(request, endpoint, json_secret, secret_type):
