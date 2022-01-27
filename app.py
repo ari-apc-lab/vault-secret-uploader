@@ -23,6 +23,26 @@ for protocol in ['http:', 'https:']:
     session.mount(protocol, adapter)
 
 
+@app.route('/croupier', methods=['POST'])
+def upload_croupier_secret():
+
+    json_data = request.json
+    if "host" in json_data:
+        host = json_data["host"]
+    else:
+        return "Request must include host or service (\"host\")\n", 403
+
+    host = _validate_host(host) 
+    if not host:
+        return "Not a valid host", 403
+
+    json_secret = json_data
+
+    secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}/" + host
+
+    return _upload_secret(request, secret_endpoint, json_secret, "croupier")
+
+
 @app.route('/ssh', methods=['POST'])
 def upload_ssh_secret():
 
@@ -32,7 +52,8 @@ def upload_ssh_secret():
     else:
         return "Request must include SSH host (\"ssh_host\")\n", 403
 
-    if not _validate_host(ssh_host):
+    ssh_host = _validate_host(ssh_host)
+    if not ssh_host:
         return "Not a valid host", 403
 
     if "ssh_user" in json_data:
@@ -115,9 +136,16 @@ def get_keycloak_secret():
     return _get_secret(request, secret_endpoint)
 
 
+@app.route('/croupier', methods=['GET'])
+def get_croupier_secret():
+    secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}"
+    return _get_secret(request, secret_endpoint)
+
+
 @app.route('/ssh/<ssh_host>', methods=['DELETE'])
 def delete_ssh_secret(ssh_host):
-    if not _validate_host(ssh_host):
+    ssh_host = _validate_host(ssh_host)
+    if not ssh_host:
         return "Not a valid host", 403
     secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/{0}/" + ssh_host
     return _delete_secret(request, secret_endpoint)
@@ -127,6 +155,12 @@ def delete_ssh_secret(ssh_host):
 def delete_keycloak_secret():
     secret_endpoint = "http://" + vault_endpoint + "/v1/keycloak/{0}"
     return _delete_secret(request, secret_endpoint)
+
+
+@app.route('/croupier', methods=['DELETE'])
+def delete_croupier_secret():
+    secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}"
+    return _delete_secret(request, secret_endpoint) 
 
 
 def _upload_secret(request, endpoint, json_secret, secret_type):
@@ -313,6 +347,9 @@ def _get_vault_token(jwt, username):
 
 
 def _validate_host(host):
-    pattern = re.compile("^([a-z0-9A-Z_-]+\.)*[a-zA-Z0-9_]+$")
-    return pattern.match(host)
+    pattern = re.compile("^(http://|https://)?([a-z0-9A-Z_-]+[/:.])*[a-zA-Z0-9_]+/?$")
+    if pattern.match(host):
+        return host.replace('/','').replace(':','')
+    else:
+        return None
     

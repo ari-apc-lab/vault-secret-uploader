@@ -2,7 +2,7 @@
 #
 # Build or push an image.
 # Images for staging are pushed to sodalite-private-registry on ${docker_registry_ip}
-# Images with production-ready version are pushed to both sodalite-private-registry and dockerhub: sodaliteh2020 repository
+# Images with production-ready version are pushed to both sodalite-private-registry and dockerhub: atosariapclab repository
 
 # Images from tagged commits are tagged with git tag
 # Images from non-tagged commits are tagged with <last_git_tag>-<commits_since_tag>-<abbreviated_commit_sha>
@@ -10,7 +10,7 @@
 # Usage:
 #   $0 build <image-name> [Dockerfile-filename]
 #   $0 push <image-name> [production|staging]
-# image name is pure name without repository (image-name, not sodaliteh2020/image-name)
+# image name is pure name without repository (image-name, not atosariapclab/image-name)
 
 build() {
     set -x
@@ -51,7 +51,7 @@ fi
 
 if [[ "$ACTION" = 'push' ]]; then
   if [[ "$TARGET" = 'production' ]]; then
-    TARGET_REGISTRY=sodaliteh2020
+    TARGET_REGISTRY=atosariapclab
   else
     TARGET_REGISTRY=${docker_registry_ip:-localhost}
   fi
