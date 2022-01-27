@@ -137,7 +137,7 @@ def get_keycloak_secret():
 
 
 @app.route('/croupier', methods=['GET'])
-def get_keycloak_secret():
+def get_croupier_secret():
     secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}"
     return _get_secret(request, secret_endpoint)
 
@@ -158,7 +158,7 @@ def delete_keycloak_secret():
 
 
 @app.route('/croupier', methods=['DELETE'])
-def delete_keycloak_secret():
+def delete_croupier_secret():
     secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}"
     return _delete_secret(request, secret_endpoint) 
 
