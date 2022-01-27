@@ -15,6 +15,8 @@ oidc_client_id = getenv("OIDC_CLIENT_ID", "sodalite-ide")
 oidc_client_secret = getenv("OIDC_CLIENT_SECRET", "")
 oidc_introspection_endpoint = getenv("OIDC_INTROSPECTION_ENDPOINT", "")
 vault_endpoint = getenv("VAULT_ADDRESS", "") + ":" + getenv("VAULT_PORT", "8200")
+if not vault_endpoint.startswith('http'):
+    vault_endpoint = 'http://' + vault_endpoint
 vault_admin_token = getenv("VAULT_ADMIN_TOKEN", "")
 
 session = Session()
@@ -38,7 +40,7 @@ def upload_croupier_secret():
 
     json_secret = json_data
 
-    secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}/" + host
+    secret_endpoint = vault_endpoint + "/v1/croupier/{0}/" + host
 
     return _upload_secret(request, secret_endpoint, json_secret, "croupier")
 
@@ -74,7 +76,7 @@ def upload_ssh_secret():
     if ssh_pkey:
         json_secret["ssh_pkey"] = ssh_pkey
 
-    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/{0}/" + ssh_host
+    secret_endpoint = vault_endpoint + "/v1/ssh/{0}/" + ssh_host
 
     return _upload_secret(request, secret_endpoint, json_secret, "ssh")
 
@@ -89,7 +91,7 @@ def upload_keycloak_secret():
         return "Request must include keycloak password (\"password\")\n", 403
 
     json_secret = {"password": password}
-    secret_endpoint = "http://" + vault_endpoint + "/v1/keycloak/{0}"
+    secret_endpoint = vault_endpoint + "/v1/keycloak/{0}"
 
     return _upload_secret(request, secret_endpoint, json_secret, "keycloak")
 
@@ -111,7 +113,7 @@ def list_ssh_secrets():
     if vault_user_token == "":
         return ({}, 200)
 
-    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/" + username
+    secret_endpoint = vault_endpoint + "/v1/ssh/" + username
     auth_header = {"x-vault-token": vault_user_token}
 
     vault_secret_response = req_request('LIST', secret_endpoint, headers=auth_header)
@@ -126,19 +128,19 @@ def list_ssh_secrets():
 
 @app.route('/ssh/<ssh_host>', methods=['GET'])
 def get_ssh_secret(ssh_host):
-    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/{0}/" + ssh_host
+    secret_endpoint = vault_endpoint + "/v1/ssh/{0}/" + ssh_host
     return _get_secret(request, secret_endpoint)
 
 
 @app.route('/keycloak', methods=['GET'])
 def get_keycloak_secret():
-    secret_endpoint = "http://" + vault_endpoint + "/v1/keycloak/{0}"
+    secret_endpoint = vault_endpoint + "/v1/keycloak/{0}"
     return _get_secret(request, secret_endpoint)
 
 
 @app.route('/croupier', methods=['GET'])
 def get_croupier_secret():
-    secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}"
+    secret_endpoint = vault_endpoint + "/v1/croupier/{0}"
     return _get_secret(request, secret_endpoint)
 
 
@@ -147,19 +149,19 @@ def delete_ssh_secret(ssh_host):
     ssh_host = _validate_host(ssh_host)
     if not ssh_host:
         return "Not a valid host", 403
-    secret_endpoint = "http://" + vault_endpoint + "/v1/ssh/{0}/" + ssh_host
+    secret_endpoint = vault_endpoint + "/v1/ssh/{0}/" + ssh_host
     return _delete_secret(request, secret_endpoint)
 
 
 @app.route('/keycloak', methods=['DELETE'])
 def delete_keycloak_secret():
-    secret_endpoint = "http://" + vault_endpoint + "/v1/keycloak/{0}"
+    secret_endpoint = vault_endpoint + "/v1/keycloak/{0}"
     return _delete_secret(request, secret_endpoint)
 
 
 @app.route('/croupier', methods=['DELETE'])
 def delete_croupier_secret():
-    secret_endpoint = "http://" + vault_endpoint + "/v1/croupier/{0}"
+    secret_endpoint = vault_endpoint + "/v1/croupier/{0}"
     return _delete_secret(request, secret_endpoint) 
 
 
@@ -184,7 +186,7 @@ def _upload_secret(request, endpoint, json_secret, secret_type):
                   "}\n"
     }
 
-    role_endpoint = "http://" + vault_endpoint + "/v1/auth/jwt/role/" + username
+    role_endpoint = vault_endpoint + "/v1/auth/jwt/role/" + username
 
     role_policies = _get_role_policies(role_endpoint)
     
@@ -204,7 +206,7 @@ def _upload_secret(request, endpoint, json_secret, secret_type):
         }
     }
 
-    policy_endpoint = "http://" + vault_endpoint + "/v1/sys/policy/" + secret_type + "-" + username
+    policy_endpoint = vault_endpoint + "/v1/sys/policy/" + secret_type + "-" + username
 
     secret_endpoint = endpoint.format(username)
 
@@ -332,7 +334,7 @@ def _get_token(r):
 
 
 def _get_vault_token(jwt, username):
-    url = "http://" + vault_endpoint + "/v1/auth/jwt/login"
+    url = vault_endpoint + "/v1/auth/jwt/login"
     payload = {
         "jwt": jwt,
         "role": username
