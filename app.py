@@ -38,7 +38,19 @@ def upload_croupier_secret():
     if not host:
         return "Not a valid host", 403
 
-    json_secret = json_data
+    user = json_data["user"] if "user" in json_data else None
+    password = json_data["password"] if "password" in json_data and len(json_data["password"]) > 0 else None
+    private_key = json_data["private_key"] if "private_key" in json_data else None
+
+    json_secret = {
+        "host": host,
+        "user": user,
+    }
+
+    if password:
+        json_secret["password"] = password
+    if private_key:
+        json_secret["private_key"] = private_key
 
     secret_endpoint = vault_endpoint + "/v1/croupier/{0}/" + host
 
@@ -144,13 +156,13 @@ def get_ssh_secret(ssh_host):
 
 @app.route('/keycloak', methods=['GET'])
 def get_keycloak_secret():
-    secret_endpoint = vault_endpoint + "/v1/keycloak/{0}"
+    secret_endpoint = vault_endpoint + "/v1/keycloak/{0}/"
     return _get_secret(request, secret_endpoint)
 
 
-@app.route('/croupier/<ssh_host>', methods=['GET'])
-def get_croupier_secret(ssh_host):
-    secret_endpoint = vault_endpoint + "/v1/croupier/{0}" + ssh_host
+@app.route('/croupier/<host>', methods=['GET'])
+def get_croupier_secret(host):
+    secret_endpoint = vault_endpoint + "/v1/croupier/{0}/" + host
     return _get_secret(request, secret_endpoint)
 
 
@@ -169,9 +181,12 @@ def delete_keycloak_secret():
     return _delete_secret(request, secret_endpoint)
 
 
-@app.route('/croupier', methods=['DELETE'])
-def delete_croupier_secret():
-    secret_endpoint = vault_endpoint + "/v1/croupier/{0}"
+@app.route('/croupier/<host>', methods=['DELETE'])
+def delete_croupier_secret(host):
+    host = _validate_host(host)
+    if not host:
+        return "Not a valid host", 403
+    secret_endpoint = vault_endpoint + "/v1/croupier/{0}/" + host
     return _delete_secret(request, secret_endpoint) 
 
 
