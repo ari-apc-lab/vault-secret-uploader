@@ -98,6 +98,17 @@ def upload_keycloak_secret():
 
 @app.route('/ssh', methods=['GET'])
 def list_ssh_secrets():
+    secret_endpoint = vault_endpoint + "/v1/ssh/" + username
+    return _list_secrets(secret_endpoint)
+
+
+@app.route('/croupier', methods=['GET'])
+def list_croupier_secrets():
+    secret_endpoint = vault_endpoint + "/v1/croupier/" + username
+    return _list_secrets(secret_endpoint)
+
+
+def _list_secrets(secret_endpoint):
     try:
         jwt = _get_token(request)
         user_info = _token_info(jwt)
@@ -113,7 +124,6 @@ def list_ssh_secrets():
     if vault_user_token == "":
         return ({}, 200)
 
-    secret_endpoint = vault_endpoint + "/v1/ssh/" + username
     auth_header = {"x-vault-token": vault_user_token}
 
     vault_secret_response = req_request('LIST', secret_endpoint, headers=auth_header)
