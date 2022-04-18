@@ -148,9 +148,9 @@ def get_keycloak_secret():
     return _get_secret(request, secret_endpoint)
 
 
-@app.route('/croupier', methods=['GET'])
-def get_croupier_secret():
-    secret_endpoint = vault_endpoint + "/v1/croupier/{0}"
+@app.route('/croupier/<ssh_host>', methods=['GET'])
+def get_croupier_secret(ssh_host):
+    secret_endpoint = vault_endpoint + "/v1/croupier/{0}" + ssh_host
     return _get_secret(request, secret_endpoint)
 
 
