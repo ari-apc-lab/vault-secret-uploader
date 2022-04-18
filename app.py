@@ -98,13 +98,13 @@ def upload_keycloak_secret():
 
 @app.route('/ssh', methods=['GET'])
 def list_ssh_secrets():
-    secret_endpoint = vault_endpoint + "/v1/ssh/" + username
+    secret_endpoint = vault_endpoint + "/v1/ssh/"
     return _list_secrets(secret_endpoint)
 
 
 @app.route('/croupier', methods=['GET'])
 def list_croupier_secrets():
-    secret_endpoint = vault_endpoint + "/v1/croupier/" + username
+    secret_endpoint = vault_endpoint + "/v1/croupier/"
     return _list_secrets(secret_endpoint)
 
 
@@ -125,7 +125,7 @@ def _list_secrets(secret_endpoint):
         return ({}, 200)
 
     auth_header = {"x-vault-token": vault_user_token}
-
+    secret_endpoint += username
     vault_secret_response = req_request('LIST', secret_endpoint, headers=auth_header)
     if not vault_secret_response.ok:
         return ("There was a problem listing the secrets from vault:\n" + str(vault_secret_response.content) + "\n",
